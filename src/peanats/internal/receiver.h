@@ -1,20 +1,16 @@
 #pragma once
 #include <peanats/internal/globals.h>
-
-#include <vector>
 #include <inttypes.h>
-#include <assert.h>
 
 PEANATS_NAMESPACE_BEGIN
 
 
-// [Receiver]
-// Helper class for managing a copy free and allocation
-// free receive buffer
+//! Class for managing a copy-free and allocation-free
+//! tcp receive buffer
 class Receiver
 {
 public:
-  // ctor, 1k default 
+  //! ctor, 1k default 
   Receiver(size_t capacity = 1024)
     : _data(new char[capacity]),
       _cursor(_data),
@@ -27,27 +23,27 @@ public:
       delete[] _data;
   }
 
-  // gets a pointer to the start of the buffer, not an iterator
+  //! gets a pointer to the raw data of the buffer
   inline char* data() const { return _data; }
 
-  //! returns the current size of the buffer, i.e. size()
+  //! gets the current size of the buffer
   inline const size_t have() { return _size; }
 
-  //! gets how much remaining space until the buffer is full
+  //! gets the number of free elements until full
   inline const size_t want() { return _capacity - _size; }
 
-  //! clears the buffer by setting it's size to 0
+  //! clears the content of the buffer
   void clear() { _size = 0; _cursor = _data; }
 
-  //! sets the size
+  //! appends a character to the buffer
   void push_back(const char c) {
     PEANATS_ASSERT(_size < _capacity, "buffer overflow");
     _data[_size++] = c;
   }
 
   // [ Members ]
-  char* _data;
-  char* _cursor;
+  char*  _data;
+  char*  _cursor;
   size_t _capacity;
   size_t _size;
 };

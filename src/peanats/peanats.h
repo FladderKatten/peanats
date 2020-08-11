@@ -8,7 +8,7 @@
 #include "peanats/internal/message.h"
 #include "peanats/internal/support.h"
 
-#include <string.h>
+#include <string>
 #include <inttypes.h>
 #include <functional>
 
@@ -29,17 +29,19 @@ static constexpr size_t Error = ~0;
 // [ Subscription]
 // ---====================================================================---
 //
-// Class for keeping subscription data. We avoid keeping the actual name of the
-// subject as it's not needed for unsubscribing nor of any use I can think of in
-// callbacks.
+//! Storage class for subscriptions
 struct Subscription
 {
+  //! ctor
   Subscription(const MessageCallback cb=0, const uint32_t max_msg=0, const uint32_t timeout=0)
     : max_msg(max_msg),
       timeout(timeout),
       cb(cb) {}
 
+  //! clears the subscription making it 'empty'
   void       clear()              { cb  = 0; }
+
+  //! gets whether the subscription is empty
   const bool empty() const { return cb == 0; }
 
   // [ Members ]
@@ -49,7 +51,7 @@ struct Subscription
 };
 
 
-// Baseclass for the peanats client
+//! Baseclass for the peanats client
 class Peanats :
   protected Parser
 {
@@ -57,6 +59,8 @@ class Peanats :
   // [Constructors / Destructors]
   // --------------------------------------------------------------------------
 public:
+  //! ctor
+  //! @param buffer_size is the memory allocation size of the tcp recv buffer
   Peanats(size_t buffer_size = 1024)
     : Parser(this),
       server_ip(),
@@ -95,40 +99,43 @@ protected:
   // --------------------------------------------------------------------------
   // [ Parser Virtuals ]
   // --------------------------------------------------------------------------
-  void on_parser_ok() {};
 
-  void on_parser_err(Peastring str) {};
+  //! Called by the parser after parsing a +OK packet
+  void on_parser_ok() override {};
 
-  // Just answer?
-  void on_parser_ping() { transmit("PONG\r\n");  }
+  //! Called by the parser after parsing a +ERR packet
+  void on_parser_err(Peastring& str) override {};
 
-  void on_parser_pong() {}
+  //! Called by the parser after parsing a PING packet
+  void on_parser_ping() override { transmit("PONG\r\n");  }
+
+  //! Called by the parser after parsing a PONG packet
+  void on_parser_pong() override {}
   
-  // Handler for splitted info message
-  // Disabled for now, TODO fix
+  // Handler for sliced info message, disabled for now, TODO fix
   void on_parser_info(Peastring& a, Peastring& b) override {
     //if (a == "max_payload")
     //  max_payload = std::atoi(b.data());
   }
 
-  //! Internal parser callback that dispatches 'MSG' to 'Subscribers'
+  //! Called by the parser after parsing a MSG packet
   void on_parser_msg(Message& m) {
     if (m.sid < subs.capacity())
-      if (subs[m.sid].cb != nullptr)
+      if (!subs[m.sid].empty())
         subs[m.sid].cb(m);
   }
 
 public:
-  // Attach a 'Logger' to the client
+  //! Attaches a 'logger' to the client
   void attach(Logger* logger) { _logger = logger; }
 
   // ---====================================================================---
   // [ Api ]
   // ---====================================================================---
 
-  // publish a 'Payload' to a 'Subject'
-  void publish(const std::string& topic, const std::string& payload = "") {
-    std::string s = "PUB " + topic + " " + std::to_string(payload.length()) + "\r\n";
+  //! publish a 'Payload' to a 'Subject'
+  void publish(const std::string& subject, const std::string& payload = "") {
+    std::string s = "PUB " + subject + " " + std::to_string(payload.length()) + "\r\n";
     s += payload + "\r\n";
     transmit(s);
   }
@@ -140,8 +147,8 @@ public:
     return sid;
   }
 
-  // Unsubscribe from a 'Sid'  TODO max_msg
-  void unsubscribe(uint32_t sid) {
+  //! Unsubscribe a subscription
+  void unsubscribe(const uint32_t sid) {
     unregister_subscription(sid);
     transmit("UNSUB " + sid);
   }
@@ -167,14 +174,14 @@ public:
   //! disconnect and shut down the client
   void shutdown() { shutting_down = true; }
 
-  // Runs forever
+  //! Runs forever
   int run(std::string&& ip, std::string&& port) {
     server_ip = ip;
     server_port = port;
     return run();
   }
 
-  // Runs forever
+  //! Runs forever
   int run() {
     shutting_down = false;
 
@@ -194,8 +201,7 @@ public:
   }
 
   //! request a tcp connection to the internal server ip/port
-  //! also calls the on_connect_callback
-  //! TODO: send connect packet
+  //! and call the on_connect_cb afterwards
   void connect() {
     if (tcp_connect() != Error) {
       // Grab the info packet
@@ -204,20 +210,17 @@ public:
     }
   }
 
-  //! log a string to the logger
+  //! log a string via the logger
   void log(const std::string& s) override  { _logger->log( s); }
   
-  //! log a string to the logger plus a linefeed character
+  //! log a string via the logger plus a linefeed character
   void logn(const std::string& s) override { _logger->logn(s); }
 
 
   // Internal
 protected:
-
-  //! Create a new sid but we try to reuse old removed sid's
-  //! if possible.
-  //! TODO: Speedup
-  //!   Maybe keeping track of where we can start walking from
+  //! Create a new subscriber in the list but try to reuse old
+  //! removed slots before allocating a new one
   Sid allocate_subscriber()
   {
     // Try to use the last removed slot if possible
@@ -234,7 +237,7 @@ protected:
     return subs.size();
   }
 
-  //! Remove a subscription from the list
+  //! Add a subscription to the list of subscriptions
   Sid register_subscription(MessageCallback cb) {
     auto sid = allocate_subscriber();
     subs[sid].cb = cb;
@@ -242,26 +245,27 @@ protected:
   }
 
 
-  //! Remove a subscription from the list
+  //! Remove a subscription from the list of subscriptions
   void unregister_subscription(Sid sid) {
     if (sid < subs.capacity())
       subs[sid].clear();
   }
 
+  // [ Members ]
 public:
-    // [ Members ]
-  bool connected;
-  bool shutting_down;                 //!< true if peanats is shutting down
-  int  inbox_counter;                 //!< number for generation of unique inbox
-  int  last_removed;
-  Logger* _logger;
-  std::vector<Subscription> subs;
+  bool connected;                 //!< True if connected (managed by derived class)
+  bool shutting_down;             //!< True when peanats is shutting down
+  int  inbox_counter;             //!< Number used for generation of unique inboxes
+  int  last_removed;              //!< Index to the last removed slot in the subscription table
+  Logger* _logger;                //!< Attached logger
+  std::vector<Subscription> subs; //!< List of subscriptions
 
   std::string server_ip;
   std::string server_port;
   Receiver    receiver;               //!< Receiver for incoming tcp data
 
   OnConnectCallback on_connect_cb = [](Peanats*){};
+
 };
 
 PEANATS_NAMESPACE_END

@@ -9,10 +9,12 @@
 
 PEANATS_NAMESPACE_BEGIN
 
+//! logging callback class
 class Logger
 {
   using LoggerCallback = std::function<void(const std::string&)>;
 public:
+  //! ctor
   Logger(LoggerCallback cb)
     : cb(cb) {}
   

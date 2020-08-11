@@ -11,11 +11,7 @@ class Message
 {
 public:
   Message(Peanats* client)
-    : client(client),
-      subject(),
-      sid(0),
-      replyto(),
-      payload() {}
+    : client(client) {}
 
   // Members
   Peastring  subject;
@@ -24,14 +20,5 @@ public:
   Peanats*   client;
   uint32_t   sid;
 };
-
-
-class Payload :
-  public Peastring
-{
-
-};
-
-
 
 PEANATS_NAMESPACE_END

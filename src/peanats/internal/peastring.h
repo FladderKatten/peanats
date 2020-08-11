@@ -50,34 +50,34 @@ public:
   inline char* data() { return _ptr; }
   //! get the raw pointer to the string
   inline const char* data() const { return _ptr; }
-  //! get the character located at 'pos'
+  //! access the character located at 'pos'
   inline char& at(size_t pos) { return _ptr[pos]; }
 
   // --------------------------------------------------------------------------
   // [ Operator overloads ]
   // --------------------------------------------------------------------------
 
-  //! don't convert to const char because that messes up the nulltemination convert to const char*
+  // don't convert to const char because that messes up the nulltemination convert to const char*
   //operator const char* () const { return _ptr; }
   operator const std::string () const { return std::string(_ptr,_len); }
 
-  //! get the character at a position
+  //! access the character at a position
   char& operator [] (size_t pos) { return at(pos); }
 
+  // Comparators 
   const bool operator == (const Peastring& other) const { return compare(other) == true; }
   const bool operator != (const Peastring& other) const { return compare(other) == false; }
   const bool operator == (const char* other) const { return compare(Peastring(other, std::strlen(other))) == true; }
   const bool operator != (const char* other) const { return compare(Peastring(other, std::strlen(other))) == false; }
 
-  //std::string operator + (const char* s) { return std::string(*this) + s; }
   std::string operator + (const Peastring& s) { return std::string(*this) + s.data(); }
 
 
   // --------------------------------------------------------------------------
   // [ Members ]
   // --------------------------------------------------------------------------
-  char* _ptr;
-  size_t _len;
+  char* _ptr;     //!< the pointer to the string
+  size_t _len;    //!< the length of the string
 };
 
 PEANATS_NAMESPACE_END
@@ -88,6 +88,7 @@ PEANATS_NAMESPACE_END
 
 #include <ostream>
 
+//! ostream overload for Peastrings
 inline std::ostream& operator<<(std::ostream& os, const peanats::Peastring& s) {
 
   for (size_t i = 0; i < s._len; i++)

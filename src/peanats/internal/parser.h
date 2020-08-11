@@ -6,25 +6,23 @@
 #include "peanats/internal/receiver.h"
 
 #include <inttypes.h>
-#include <vector>
-#include <array>
+
 
 PEANATS_NAMESPACE_BEGIN
 
 // [ Forward decl ]
 class Peanats;
 
-/*
-*/
+//! State machine parser that processes a 'Receiver' 
+//!
 class Parser
 {
 public:
   // --------------------------------------------------------------------------
   // [ Constructor / Destructor ]
   // --------------------------------------------------------------------------
-  Parser(Peanats* peanats)
-    : peanats(peanats),
-//      tokens(),
+  Parser(Peanats* parent)
+    : peanats(parent),
       remaining_payload(0),
       cs(0),
       top(0)
@@ -35,33 +33,52 @@ public:
   ~Parser() {}
 
   // --------------------------------------------------------------------------
-  // [ Virtuals ]
+  // [ Interface ]
   // --------------------------------------------------------------------------
 protected:
+  //! log interface for derived class
   virtual void log( const std::string&) = 0;
+
+  //! logn interface for derived class
   virtual void logn(const std::string&) = 0;
 
+  //! +OK callback interface for derived class
   virtual void on_parser_ok() {};
+  
+  //! PING callback interface for derived class
   virtual void on_parser_ping() {};
+  
+  //! PONG callback interface for derived class
   virtual void on_parser_pong() {};
+
+  //! MSG callback interface for derived class
   virtual void on_parser_msg(Message& m) {};
+
+  //! -ERR callback interface for derived class
   virtual void on_parser_err(Peastring&) {};
+
+  //! INFO callback interface for derived class
   virtual void on_parser_info(Peastring&, Peastring&) {};
+
+  // --------------------------------------------------------------------------
+  // [ Internal ]
+  // --------------------------------------------------------------------------
+
+  //! call the state machine parser to process a 'Receiver'
+  inline void ragel_parser(Receiver&);
+
+  //! gets the first final state of the machine
+  inline const int first_final_state();
+
+  //! resets the state of the machine
+  inline void clear_state();
+
 
   // --------------------------------------------------------------------------
   // [ Api ]
   // --------------------------------------------------------------------------
 public:
-  //! Parse a 'RecvBuffer' and clear consumed content when done
-  inline void ragel_parser(Receiver&);
-  inline const int first_final_state();
-
-  //! Reset the state of the parser
-  inline void clear_state();
-
-
-  //! calls the ragel parser and does adjustments to the buffer
-  //! afterwards
+  //! calls the state machine parser and adjust the 'Reciver' afterwards
   inline void parse(Receiver& receiver)
   {
     ragel_parser(receiver);
@@ -115,16 +132,13 @@ public:
   // --------------------------------------------------------------------------
   // [ Members ]
   // --------------------------------------------------------------------------
+private:
+  int cs;                         //!< state machine internal state
+  int stack[4], top = 0;          //!< state machine internal stack
 
-  // Ragel stuff
-  size_t p_index;
-  int cs;
-  int stack[4], top = 0;
-  //ServerINFO server_info;
-  TokenList tokens;
-
-  size_t remaining_payload = 0;
-  Peanats* peanats;
+  TokenList tokens;               //!< list of 'Token'
+  size_t remaining_payload = 0;   //!< the remaining payload when processing
+  Peanats* peanats;               //!< parent peanats base class
 };
 
 PEANATS_NAMESPACE_END

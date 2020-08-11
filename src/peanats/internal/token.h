@@ -5,9 +5,7 @@
 
 PEANATS_NAMESPACE_BEGIN
 
-//
-// Token class for marking where nats tokes starts and finishes
-//
+//! Token class for marking where nats tokes begins and ends
 class Token
   : public Peastring
 {
@@ -17,19 +15,25 @@ public:
 };
 
 
-//! Class for keeping track of nats tokens
+//! List of 'Tokens'
+//! @see Token
 class TokenList
 {
-  friend class RecvBuffer;
 public:
   TokenList()
     : _size(0),
       _tokens() {}
 
+  //! clears all tokens
   void clear()        { _tokens[_size = 0]._ptr = 0; }
+
+  //! marks the beginning of a token
   void start(char* p) { _tokens[_size].start(p);  }
+
+  //! marks the end of a token and inserts it in the list
   void  stop(char* p) { _tokens[_size++].stop(p); }
 
+  //! gets the current number of finished tokens
   size_t size() { return _size; }
 
   //! access the front token
@@ -41,18 +45,18 @@ public:
     return _tokens[_size-1];
   }
 
-  // gets whether any tokens have been stored or started
+  //! gets whether any tokens have been stored **or** started
   inline bool empty() { return front()._ptr == nullptr; }
 
-  // gets all the tokens as a merged string. This is mostly used to log
-  // packets without using allocations to build strings
+  //! gets all the tokens as a merged string view.
+  //! This is mostly used to log packets without using allocations
   std::string to_full_string() {
     auto ptr = front()._ptr;
     size_t len = (back()._ptr + back()._len) - ptr;
     return { ptr, len };
   }
 
-
+  //! access the n-th token in the list
   Token& operator[](size_t n) { return _tokens[n]; }
 
   // [ Members ]
